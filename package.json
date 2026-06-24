@@ -1,0 +1,28 @@
+{
+  "name": "cc-plugins",
+  "version": "0.1.0",
+  "description": "Use Claude Code plugins inside opencode — a minimal compatibility plugin",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "keywords": [
+    "opencode",
+    "claude-code",
+    "plugin",
+    "compat",
+    "mcp",
+    "hooks"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@opencode-ai/plugin": "latest",
+    "@types/node": "^26.0.0",
+    "typescript": "^5.6.0"
+  }
+}
