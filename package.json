@@ -1,14 +1,25 @@
 {
-  "name": "cc-plugins",
-  "version": "0.1.0",
+  "name": "opencode-claude-plugins",
+  "version": "0.1.1",
   "description": "Use Claude Code plugins inside opencode — a minimal compatibility plugin",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    }
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
   "keywords": [
