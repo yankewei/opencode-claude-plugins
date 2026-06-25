@@ -8,7 +8,6 @@ import type {
   OpenCodeAgent,
   OpenCodeMcp,
   CommandFrontmatter,
-  SkillFrontmatter,
   AgentFrontmatter,
   ClaudeCodeMcpConfig,
   ClaudeCodeMcpServer,
@@ -64,7 +63,7 @@ async function loadCommands(plugin: LoadedPlugin, out: PluginComponents): Promis
   }
 }
 
-// ── Skills (exposed as opencode skill paths and slash commands) ───────────────
+// ── Skills (exposed as opencode skill paths) ──────────────────────────────────
 
 async function loadSkills(plugin: LoadedPlugin, out: PluginComponents): Promise<void> {
   const skillsDir = path.join(plugin.installPath, "skills")
@@ -73,23 +72,8 @@ async function loadSkills(plugin: LoadedPlugin, out: PluginComponents): Promise<
     for (const e of entries) {
       if (!e.isDirectory()) continue
       const skillDir = path.join(skillsDir, e.name)
-      const md = path.join(skillDir, "SKILL.md")
-      const raw = await readFile(md, "utf8").catch(() => "")
-      if (!raw) continue
-      out.skillPaths.push(skillDir)
-      const { data, body } = parseFrontmatter<SkillFrontmatter>(raw)
-      const skillName = data.name ?? e.name
-      const ns = `${plugin.manifest.name}:${skillName}`
-      const resolved = resolvePluginPaths(body.trim(), plugin.installPath)
-      out.commands[ns] = {
-        template:
-          `<skill-instruction>\n` +
-          `Base directory for this skill: ${skillDir}/\n` +
-          `File references (@path) in this skill are relative to this directory.\n\n` +
-          `${resolved}\n</skill-instruction>\n\n` +
-          `<user-request>\n$ARGUMENTS\n</user-request>`,
-        description: `(plugin: ${plugin.manifest.name} - Skill) ${data.description ?? ""}`.trim(),
-        ...(mapModel(data.model) ? { model: mapModel(data.model)! } : {}),
+      if (await exists(path.join(skillDir, "SKILL.md"))) {
+        out.skillPaths.push(skillDir)
       }
     }
   }
@@ -97,23 +81,6 @@ async function loadSkills(plugin: LoadedPlugin, out: PluginComponents): Promise<
   const rootSkill = path.join(plugin.installPath, "SKILL.md")
   if (await exists(rootSkill)) {
     out.skillPaths.push(plugin.installPath)
-    const raw = await readFile(rootSkill, "utf8").catch(() => "")
-    if (raw) {
-      const { data, body } = parseFrontmatter<SkillFrontmatter>(raw)
-      const skillName = data.name ?? plugin.manifest.name
-      const ns = `${plugin.manifest.name}:${skillName}`
-      const resolved = resolvePluginPaths(body.trim(), plugin.installPath)
-      out.commands[ns] = {
-        template:
-          `<skill-instruction>\n` +
-          `Base directory for this skill: ${plugin.installPath}/\n` +
-          `File references (@path) in this skill are relative to this directory.\n\n` +
-          `${resolved}\n</skill-instruction>\n\n` +
-          `<user-request>\n$ARGUMENTS\n</user-request>`,
-        description: `(plugin: ${plugin.manifest.name} - Skill) ${data.description ?? ""}`.trim(),
-        ...(mapModel(data.model) ? { model: mapModel(data.model)! } : {}),
-      }
-    }
   }
 }
 

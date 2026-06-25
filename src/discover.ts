@@ -9,14 +9,16 @@ import type {
   LoadedPlugin,
 } from "./types.js"
 
-const CLAUDE_PLUGINS_HOME = process.env.CLAUDE_PLUGINS_HOME ?? path.join(os.homedir(), ".claude/plugins")
+function getClaudePluginsHome(): string {
+  return process.env.CLAUDE_PLUGINS_HOME ?? path.join(os.homedir(), ".claude/plugins")
+}
 
 export async function discoverPlugins(opts: {
   cwd?: string
   enabledOverride?: Record<string, boolean>
 }): Promise<LoadedPlugin[]> {
   const cwd = opts.cwd ?? process.cwd()
-  const dbPath = path.join(CLAUDE_PLUGINS_HOME, "installed_plugins.json")
+  const dbPath = path.join(getClaudePluginsHome(), "installed_plugins.json")
 
   let db: InstalledPluginsDatabase
   try {
