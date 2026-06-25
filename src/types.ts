@@ -125,12 +125,6 @@ export interface CommandFrontmatter {
   subtask?: boolean
 }
 
-export interface SkillFrontmatter {
-  name?: string
-  description?: string
-  model?: string
-}
-
 export interface AgentFrontmatter {
   name?: string
   description?: string
