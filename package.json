@@ -32,6 +32,10 @@
     "hooks"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yankewei/opencode-claude-plugins.git"
+  },
   "devDependencies": {
     "@opencode-ai/plugin": "latest",
     "@types/node": "^26.0.0",
