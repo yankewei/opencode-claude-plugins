@@ -1,4 +1,4 @@
-# cc-plugins
+# opencode-claude-plugins
 
 Use your Claude Code plugins inside [opencode](https://opencode.ai) — a minimal compatibility plugin.
 
@@ -23,7 +23,7 @@ Then run opencode in this directory — the plugin is auto-loaded from `.opencod
 Copy the `src/` directory and `.opencode/plugins/cc-compat.ts` into your target project (preserving the relative path), or publish to npm and add the package name to your `opencode.json`:
 
 ```jsonc
-{ "plugin": ["cc-plugins"] }
+{ "plugin": ["opencode-claude-plugins"] }
 ```
 
 ## How it works

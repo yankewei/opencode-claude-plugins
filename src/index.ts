@@ -9,3 +9,5 @@ export {
   dispatchSimpleEvent,
 } from "./hooks.js"
 export type { HookState, PreToolUseResult, PostToolUseResult } from "./hooks.js"
+export { CcCompat } from "./plugin.js"
+export { default } from "./plugin.js"

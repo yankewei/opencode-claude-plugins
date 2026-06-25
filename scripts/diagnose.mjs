@@ -16,7 +16,7 @@ function short(p) {
   return p.replace(home, "~")
 }
 
-console.log("=== cc-plugins diagnose ===\n")
+console.log("=== opencode-claude-plugins diagnose ===\n")
 console.log("CLAUDE_PLUGINS_HOME:", short(pluginsHome))
 console.log("cwd:", process.cwd())
 
