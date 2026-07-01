@@ -24,6 +24,12 @@ function cleanup(tmp: string): void {
   fs.rmSync(tmp, { recursive: true, force: true })
 }
 
+function emptyClaudeConfig(tmp: string): string {
+  const p = path.join(tmp, ".claude.json")
+  fs.writeFileSync(p, JSON.stringify({}))
+  return p
+}
+
 describe("loadComponents", () => {
   it("loads commands from commands/*.md", async () => {
     const { tmp, plugin } = createPluginDir()
@@ -34,7 +40,7 @@ describe("loadComponents", () => {
       "---\ndescription: Say hello\nmodel: sonnet\n---\n\nGreet the user.",
     )
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(Object.keys(components.commands)).toEqual(["my-plugin:hello"])
@@ -49,7 +55,7 @@ describe("loadComponents", () => {
     fs.mkdirSync(skillsDir, { recursive: true })
     fs.writeFileSync(path.join(skillsDir, "SKILL.md"), "---\nname: writer\n---\n\nWrite well.")
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(components.skillPaths).toContain(skillsDir)
@@ -60,7 +66,7 @@ describe("loadComponents", () => {
     const { tmp, plugin } = createPluginDir()
     fs.writeFileSync(path.join(plugin.installPath, "SKILL.md"), "---\nname: root-skill\n---\n\nRoot skill.")
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(components.skillPaths).toContain(plugin.installPath)
@@ -75,7 +81,7 @@ describe("loadComponents", () => {
       "---\ndescription: Code reviewer\nmodel: opus\ntools: read,edit,-bash\n---\n\nReview code carefully.",
     )
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(Object.keys(components.agents)).toEqual(["my-plugin:reviewer"])
@@ -101,7 +107,7 @@ describe("loadComponents", () => {
       }),
     )
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(Object.keys(components.mcpServers)).toEqual(["my-plugin:fs"])
@@ -128,7 +134,7 @@ describe("loadComponents", () => {
       }),
     )
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     const mcp = components.mcpServers["my-plugin:web"]
@@ -157,7 +163,7 @@ describe("loadComponents", () => {
       }),
     )
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(components.hooksConfigs).toHaveLength(1)
@@ -181,7 +187,7 @@ describe("loadComponents", () => {
       }),
     )
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(Object.keys(components.mcpServers)).toHaveLength(0)
@@ -196,9 +202,106 @@ describe("loadComponents", () => {
       "---\n---\nUse ${CLAUDE_PLUGIN_ROOT}/data.",
     )
 
-    const components = await loadComponents([plugin])
+    const components = await loadComponents([plugin], { claudeConfigPath: emptyClaudeConfig(tmp) })
     cleanup(tmp)
 
     expect(components.commands["my-plugin:ctx"].template).toContain(plugin.installPath)
+  })
+
+  it("loads user-scope MCP from ~/.claude.json", async () => {
+    const { tmp, plugin } = createPluginDir()
+    const cfgPath = path.join(tmp, ".claude.json")
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({
+        mcpServers: {
+          context7: { type: "http", url: "https://mcp.context7.com/mcp" },
+        },
+      }),
+    )
+
+    const components = await loadComponents([plugin], { claudeConfigPath: cfgPath })
+    cleanup(tmp)
+
+    const mcp = components.mcpServers["context7"]
+    expect(mcp?.type).toBe("remote")
+    if (mcp?.type !== "remote") throw new Error("expected remote mcp")
+    expect(mcp.url).toBe("https://mcp.context7.com/mcp")
+  })
+
+  it("loads project-scope MCP from ~/.claude.json projects[cwd]", async () => {
+    const { tmp, plugin } = createPluginDir()
+    const projectDir = path.join(tmp, "myproject")
+    fs.mkdirSync(projectDir, { recursive: true })
+    const cfgPath = path.join(tmp, ".claude.json")
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({
+        mcpServers: {
+          ctx7: { type: "http", url: "https://user.example.com/mcp" },
+        },
+        projects: {
+          [projectDir]: {
+            mcpServers: {
+              ctx7: { type: "http", url: "https://project.example.com/mcp" },
+              local: { command: "npx", args: ["srv"] },
+            },
+          },
+        },
+      }),
+    )
+
+    const components = await loadComponents([plugin], {
+      cwd: projectDir,
+      claudeConfigPath: cfgPath,
+    })
+    cleanup(tmp)
+
+    expect(components.mcpServers["ctx7"]?.type).toBe("remote")
+    if (components.mcpServers["ctx7"]?.type !== "remote") throw new Error("expected remote")
+    expect((components.mcpServers["ctx7"] as any).url).toBe("https://project.example.com/mcp")
+    expect(components.mcpServers["local"]?.type).toBe("local")
+  })
+
+  it("skips project-scope MCP for non-matching cwd", async () => {
+    const { tmp, plugin } = createPluginDir()
+    const cfgPath = path.join(tmp, ".claude.json")
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({
+        projects: {
+          "/elsewhere": {
+            mcpServers: {
+              ctx7: { type: "http", url: "https://elsewhere.example.com/mcp" },
+            },
+          },
+        },
+      }),
+    )
+
+    const components = await loadComponents([plugin], {
+      cwd: path.join(tmp, "here"),
+      claudeConfigPath: cfgPath,
+    })
+    cleanup(tmp)
+
+    expect(components.mcpServers["ctx7"]).toBeUndefined()
+  })
+
+  it("respects CLAUDE_CONFIG_PATH env override", async () => {
+    const { tmp, plugin } = createPluginDir()
+    const cfgPath = path.join(tmp, ".claude.json")
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ mcpServers: { viaEnv: { command: "echo" } } }),
+    )
+    process.env.CLAUDE_CONFIG_PATH = cfgPath
+    try {
+      const components = await loadComponents([plugin])
+      expect(components.mcpServers["viaEnv"]?.type).toBe("local")
+    } finally {
+      delete process.env.CLAUDE_CONFIG_PATH
+    }
+    cleanup(tmp)
   })
 })

@@ -11,6 +11,7 @@ import type {
   AgentFrontmatter,
   ClaudeCodeMcpConfig,
   ClaudeCodeMcpServer,
+  ClaudeJson,
   HooksConfig,
   HookEntry,
 } from "./types.js"
@@ -22,9 +23,13 @@ const MODEL_ALIAS = new Map<string, string>([
   ["haiku", `${ANTHROPIC_PREFIX}claude-haiku-4-5`],
 ])
 
-export async function loadComponents(plugins: LoadedPlugin[]): Promise<PluginComponents> {
+export async function loadComponents(
+  plugins: LoadedPlugin[],
+  opts: { cwd?: string; claudeConfigPath?: string } = {},
+): Promise<PluginComponents> {
   const out: PluginComponents = { commands: {}, agents: {}, mcpServers: {}, hooksConfigs: [], skillPaths: [] }
   await Promise.all(plugins.map((p) => loadOne(p, out)))
+  await loadClaudeJsonMcp(out, opts.cwd ?? process.cwd(), opts.claudeConfigPath)
   return out
 }
 
@@ -162,6 +167,41 @@ function transformMcp(server: ClaudeCodeMcpServer): OpenCodeMcp | undefined {
   }
   if (server.env && Object.keys(server.env).length) out.environment = server.env
   return out
+}
+
+// ── ~/.claude.json MCP (user + project scope) ────────────────────────────────
+
+async function loadClaudeJsonMcp(
+  out: PluginComponents,
+  cwd: string,
+  claudeConfigPath?: string,
+): Promise<void> {
+  const file = claudeConfigPath ?? process.env.CLAUDE_CONFIG_PATH ?? path.join(os.homedir(), ".claude.json")
+  const raw = await readFile(file, "utf8").catch(() => "")
+  if (!raw) return
+  let cfg: ClaudeJson
+  try {
+    cfg = JSON.parse(raw)
+  } catch {
+    return
+  }
+  const cwdResolved = path.resolve(cwd)
+  // User-scope servers first, then project-scope overrides by bare name.
+  for (const [name, server] of Object.entries(cfg.mcpServers ?? {})) {
+    addClaudeJsonServer(out, name, server)
+  }
+  const projectServers = cfg.projects?.[cwdResolved]?.mcpServers
+  if (projectServers) {
+    for (const [name, server] of Object.entries(projectServers)) {
+      addClaudeJsonServer(out, name, server)
+    }
+  }
+}
+
+function addClaudeJsonServer(out: PluginComponents, name: string, server: ClaudeCodeMcpServer): void {
+  if (server.disabled) return
+  const transformed = transformMcp(server)
+  if (transformed) out.mcpServers[name] = transformed
 }
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────

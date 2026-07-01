@@ -56,14 +56,21 @@ export class DefaultCcCompatRuntime implements CcCompatRuntime {
     if (this.loaded) return null
     this.loaded = true
 
-    const plugins = await discoverPlugins({})
+    const cwd = process.cwd()
+    const plugins = await discoverPlugins({ cwd })
     log(
       `discovered ${plugins.length} plugin(s):`,
       plugins.map((p) => p.key).join(", ") || "(none)",
     )
-    if (plugins.length === 0) return null
+    if (plugins.length === 0) {
+      // Still load ~/.claude.json MCP even with no plugins
+      const components = await loadComponents([], { cwd })
+      setHookConfigs(this.hookState, components.hooksConfigs)
+      if (Object.keys(components.mcpServers).length === 0) return null
+      return components
+    }
 
-    const components = await loadComponents(plugins)
+    const components = await loadComponents(plugins, { cwd })
     log(
       `loaded: ${Object.keys(components.commands).length} commands, ` +
         `${Object.keys(components.agents).length} agents, ` +

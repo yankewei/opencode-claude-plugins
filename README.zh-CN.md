@@ -22,6 +22,7 @@ opencode plugin -g opencode-claude-plugins
    - Skills 变成 opencode 命令（opencode 没有 skill 概念），包在 `<skill-instruction>` 里并带上基础目录。
    - Agents 变成 opencode subagents（模式强制为 `subagent`），模型别名会做映射（例如 `sonnet` 映射为 `anthropic/claude-sonnet-4-6`）。
    - MCP 转成 opencode 的 mcp 配置（stdio 映射为 `local`，http / sse 映射为 `remote`）。
+   - 同时读取 `~/.claude.json` 的顶层 `mcpServers`（用户级）和 `projects[cwd].mcpServers`（项目级），按裸名注入；项目级覆盖用户级。路径可用 `CLAUDE_CONFIG_PATH` 环境变量覆盖。
 3. **注入**。直接修改传给 `config` hook 的运行时配置对象引用。改动在当前会话立即生效，不需要重启。
 4. **Hook 桥接**。把 `hooks/hooks.json` 保留在内存中。在 `tool.execute.before`、`tool.execute.after`、`chat.message`、`session.idle` 或 `experimental.session.compacting` 触发时，找到对应的 CC hook，启动 shell 命令，把 Claude Code 的 JSON payload 喂到 stdin，然后解析退出码（0 表示允许/解析，1 表示询问，2 表示拒绝/警告）。
 
@@ -33,6 +34,7 @@ opencode plugin -g opencode-claude-plugins
 | `skills/<name>/SKILL.md` | ✅ → opencode slash 命令 |
 | `agents/*.md` | ✅ → opencode subagents |
 | `.mcp.json`（stdio + http/sse） | ✅ → opencode mcp 配置 |
+| `~/.claude.json` 的 `mcpServers`（用户级 + 项目级） | ✅ → opencode mcp 配置 |
 | `hooks/hooks.json`（PreToolUse、PostToolUse、UserPromptSubmit、Stop、PreCompact） | ✅ → opencode 事件 |
 | `lspServers`、`outputStyles`、`monitors/`、`bin/`、插件内的 `settings.json` | ❌ 不支持 |
 | `SessionStart/End`、`SubagentStart/Stop`、`Notification`、`PostToolUseFailure`、`PermissionRequest` hooks | ❌ 未接入 |

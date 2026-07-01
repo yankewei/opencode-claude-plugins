@@ -150,6 +150,13 @@ export interface ClaudeCodeMcpConfig {
   mcpServers?: Record<string, ClaudeCodeMcpServer>
 }
 
+// ── ~/.claude.json (user + project MCP) ───────────────────────────────────────
+
+export interface ClaudeJson {
+  mcpServers?: Record<string, ClaudeCodeMcpServer>
+  projects?: Record<string, { mcpServers?: Record<string, ClaudeCodeMcpServer> }>
+}
+
 // ── CC hooks ──────────────────────────────────────────────────────────────────
 
 export type ClaudeHookEvent =
