@@ -193,12 +193,18 @@ async function loadClaudeJsonMcp(
   const projectServers = cfg.projects?.[cwdResolved]?.mcpServers
   if (projectServers) {
     for (const [name, server] of Object.entries(projectServers)) {
-      addClaudeJsonServer(out, name, server)
+      addClaudeJsonServer(out, name, server, true)
     }
   }
 }
 
-function addClaudeJsonServer(out: PluginComponents, name: string, server: ClaudeCodeMcpServer): void {
+function addClaudeJsonServer(
+  out: PluginComponents,
+  name: string,
+  server: ClaudeCodeMcpServer,
+  overrideExisting = false,
+): void {
+  if (overrideExisting) delete out.mcpServers[name]
   if (server.disabled) return
   const transformed = transformMcp(server)
   if (transformed) out.mcpServers[name] = transformed

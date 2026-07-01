@@ -263,6 +263,36 @@ describe("loadComponents", () => {
     expect(components.mcpServers["local"]?.type).toBe("local")
   })
 
+  it("lets project-scope disabled MCP override user-scope MCP", async () => {
+    const { tmp, plugin } = createPluginDir()
+    const projectDir = path.join(tmp, "myproject")
+    fs.mkdirSync(projectDir, { recursive: true })
+    const cfgPath = path.join(tmp, ".claude.json")
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({
+        mcpServers: {
+          ctx7: { type: "http", url: "https://user.example.com/mcp" },
+        },
+        projects: {
+          [projectDir]: {
+            mcpServers: {
+              ctx7: { command: "npx", args: ["ctx7"], disabled: true },
+            },
+          },
+        },
+      }),
+    )
+
+    const components = await loadComponents([plugin], {
+      cwd: projectDir,
+      claudeConfigPath: cfgPath,
+    })
+    cleanup(tmp)
+
+    expect(components.mcpServers["ctx7"]).toBeUndefined()
+  })
+
   it("skips project-scope MCP for non-matching cwd", async () => {
     const { tmp, plugin } = createPluginDir()
     const cfgPath = path.join(tmp, ".claude.json")
